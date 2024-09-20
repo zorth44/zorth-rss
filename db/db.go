@@ -50,7 +50,19 @@ func createTable() {
 }
 
 func InsertRSSItem(item model.RssItemDMHY, formattedPubDate string) error {
-	_, err := DB.Exec(`
+	// 首先检查条目是否已存在
+	var exists bool
+	err := DB.QueryRow("SELECT EXISTS(SELECT 1 FROM rss_items WHERE guid = ?)", item.GUID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		// 条目已存在，不需要插入
+		return nil
+	}
+
+	// 条目不存在，执行插入操作
+	_, err = DB.Exec(`
 		INSERT INTO rss_items (title, link, description, author, pub_date, enclosure_url, enclosure_length, enclosure_type, guid, category)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, item.Title, item.Link, item.Disc, item.Author, formattedPubDate, item.Enclosure.URL, item.Enclosure.Length, item.Enclosure.Type, item.GUID, joinCategories(item.Category))
@@ -62,20 +74,19 @@ func joinCategories(categories []string) string {
 }
 
 func GetLatestPubDate() (time.Time, error) {
-	var latestPubDate sql.NullTime
+	var latestPubDate []byte
 	err := DB.QueryRow("SELECT MAX(pub_date) FROM rss_items").Scan(&latestPubDate)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// 如果没有记录，返回零值时间和 sql.ErrNoRows 错误
-			return time.Time{}, sql.ErrNoRows
+			return time.Time{}, nil
 		}
 		return time.Time{}, err
 	}
 
-	if !latestPubDate.Valid {
-		// 如果 MAX(pub_date) 返回 NULL，返回零值时间
+	if latestPubDate == nil {
 		return time.Time{}, nil
 	}
 
-	return latestPubDate.Time, nil
+	// 将 []byte 转换为字符串，然后解析为 time.Time
+	return time.Parse("2006-01-02 15:04:05", string(latestPubDate))
 }

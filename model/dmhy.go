@@ -16,9 +16,9 @@ type RssItemDMHY struct {
 	Author    string `xml:"author"`
 	PubDate   string `xml:"pubDate"`
 	Enclosure struct {
-		URL    string `xml:"url"`
-		Length string `xml:"length"`
-		Type   string `xml:"type"`
+		URL    string `xml:"url,attr"`
+		Length string `xml:"length,attr"`
+		Type   string `xml:"type,attr"`
 	} `xml:"enclosure"`
 	GUID     string   `xml:"guid"`
 	Category []string `xml:"category"`
